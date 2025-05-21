@@ -28,18 +28,25 @@ def generate_weather_description(data):
         temperature = data['main']['temp']
         description = data['weather'][0]['description']
         city_name = data['name']
-        prompt = f"The current weather in {city_name} is {description} with a temperature of {temperature:.1f} °C. Explain this simply for a general audience."
-        model = genai.GenerativeModel("gemini-pro")
+        prompt = (
+            f"The current weather in {city_name} is {description} "
+            f"with a temperature of {temperature:.1f} °C. Explain this dramaticaly for a general audience in 5 line."
+        )
+        model = genai.GenerativeModel("models/gemini-1.5-flash")
         response = model.generate_content(prompt)
-        return response.text.strip() if response else "Weather description unavailable."
-    except Exception:
-        return "Error generating weather description."
+        # Fix here: access the text correctly
+        generated_text = response.candidates[0].content.parts[0].text.strip()
+        return generated_text
+    except Exception as e:
+        st.warning(f"AI generation error: {e}")
+        # Fallback text if AI fails
+        return f"The current weather in {city_name} is {description} with a temperature of {temperature:.1f} °C."
+
 
 def display_weekly_forecast(data):
     try:
         st.subheader("📅 Weekly Weather Forecast")
         displayed_dates = set()
-        
         for entry in data['list']:
             date = datetime.fromtimestamp(entry['dt']).strftime('%A, %B %d')
             if date not in displayed_dates:
@@ -57,7 +64,6 @@ def display_weekly_forecast(data):
         st.error(f"Error displaying weekly forecast: {e}")
 
 def main():
-    st.sidebar.image("logo.png", width=200)
     st.sidebar.title("Weather Forecasting with Gemini AI")
     city = st.sidebar.text_input("Enter city name", "Chennai")
 
@@ -81,7 +87,9 @@ def main():
                 st.metric("💨 Pressure", f"{weather_data['main']['pressure']} hPa")
                 st.metric("🍃 Wind Speed", f"{weather_data['wind']['speed']} m/s")
             
-            st.write(generate_weather_description(weather_data))
+            # Generate and display AI description
+            ai_description = generate_weather_description(weather_data)
+            st.write(ai_description)
             
             lat, lon = weather_data['coord']['lat'], weather_data['coord']['lon']
             forecast_data = get_weekly_forecast(lat, lon)
